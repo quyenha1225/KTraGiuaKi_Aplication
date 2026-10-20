@@ -1,46 +1,670 @@
+
 import React, { useMemo, useState } from 'react';
-import { View, Text, TextInput, FlatList, Pressable, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+} from 'react-native';
+
 import { MSSV } from '../config';
 import DishCard from '../components/DishCard';
-const tr = (lang, en, vi) => lang === 'en' ? en : vi;
-export default function DishesScreen({ dishes, categories, onSelect, onAdd, onRefresh, loading, lang, onLanguage }) {
+
+const tr = (lang, en, vi) => (lang === 'en' ? en : vi);
+
+export default function DishesScreen({
+  dishes = [],
+  categories = [],
+  onSelect,
+  onAdd,
+  onRefresh,
+  loading = false,
+  lang = 'en',
+  onLanguage,
+}) {
   const [search, setSearch] = useState('');
   const [cat, setCat] = useState('all');
   const [availableOnly, setAvailableOnly] = useState(false);
   const [sort, setSort] = useState('default');
-  const [minPrice,setMinPrice] = useState('');
-  const [maxPrice,setMaxPrice] = useState('');
-  const invalidRange = (minPrice.trim() && (!Number.isFinite(Number(minPrice)) || Number(minPrice)<0)) || (maxPrice.trim() && (!Number.isFinite(Number(maxPrice)) || Number(maxPrice)<0)) || (minPrice.trim() && maxPrice.trim() && Number(minPrice)>Number(maxPrice));
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+
+  const min = minPrice.trim();
+  const max = maxPrice.trim();
+
+  const invalidRange =
+    (min !== '' &&
+      (!Number.isFinite(Number(min)) || Number(min) < 0)) ||
+    (max !== '' &&
+      (!Number.isFinite(Number(max)) || Number(max) < 0)) ||
+    (min !== '' &&
+      max !== '' &&
+      Number(min) > Number(max));
+
+  // Tim kiem, loc va sap xep mon an
   const shown = useMemo(() => {
-    const list = dishes.filter(x => !invalidRange && x.name.toLowerCase().includes(search.trim().toLowerCase()) && (cat === 'all' || x.categoryId === cat) && (!availableOnly || x.isAvailable) && (!minPrice.trim() || x.price>=Number(minPrice)) && (!maxPrice.trim() || x.price<=Number(maxPrice)));
-    if (sort === 'asc') list.sort((a,b) => a.price-b.price);
-    if (sort === 'desc') list.sort((a,b) => b.price-a.price);
-    if (sort === 'time') list.sort((a,b) => a.preparationTime-b.preparationTime);
+    if (invalidRange) return [];
+
+    const list = dishes.filter((dish) => {
+      const name = String(dish.name || '').toLowerCase();
+
+      const matchName = name.includes(
+        search.trim().toLowerCase()
+      );
+
+      const matchCategory =
+        cat === 'all' ||
+        String(dish.categoryId) === String(cat);
+
+      const matchAvailable =
+        !availableOnly || dish.isAvailable === true;
+
+      const price = Number(dish.price);
+
+      const matchMin =
+        min === '' || price >= Number(min);
+
+      const matchMax =
+        max === '' || price <= Number(max);
+
+      return (
+        matchName &&
+        matchCategory &&
+        matchAvailable &&
+        matchMin &&
+        matchMax
+      );
+    });
+
+    if (sort === 'asc') {
+      list.sort((a, b) => Number(a.price) - Number(b.price));
+    } else if (sort === 'desc') {
+      list.sort((a, b) => Number(b.price) - Number(a.price));
+    } else if (sort === 'time') {
+      list.sort(
+        (a, b) =>
+          Number(a.preparationTime) -
+          Number(b.preparationTime)
+      );
+    }
+
     return list;
-  }, [dishes, search, cat, availableOnly, sort, minPrice, maxPrice, invalidRange]);
-  const tag = (label, active, onPress) => <Pressable key={label} style={[s.tag,active && s.tagOn]} onPress={onPress}><Text style={[s.tagText,active && s.tagTextOn]}>{label}</Text></Pressable>;
-  return <View style={s.screen}>
-    <View style={s.header}>
-      <View><Text style={s.title}>Food Manager</Text><Text style={s.note}>{MSSV} · {shown.length} {tr(lang,'dishes','món ăn')}</Text></View>
-      <Pressable style={s.lang} onPress={onLanguage}><Text style={{fontWeight:'700'}}>{lang === 'en' ? '🇻🇳 VI' : '🇬🇧 EN'}</Text></Pressable>
+  }, [
+    dishes,
+    search,
+    cat,
+    availableOnly,
+    sort,
+    min,
+    max,
+    invalidRange,
+  ]);
+
+  // Nut loc va sap xep
+  const pill = (label, selected, action, key) => (
+    <Pressable
+      key={key || label}
+      onPress={action}
+      style={[
+        styles.pill,
+        selected && styles.pillSelected,
+      ]}
+    >
+      <Text
+        style={[
+          styles.pillText,
+          selected && styles.pillSelectedText,
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+
+  const Header = () => (
+    <>
+      {/* Tieu de */}
+      <View style={styles.top}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.eyebrow}>
+            ✦ FOOD STUDIO / {MSSV}
+          </Text>
+
+          <Text style={styles.header}>
+            {tr(lang, 'Your food,', 'Món ngon,')}
+            <Text style={styles.accent}>
+              {tr(lang, ' simplified.', ' trong tầm tay.')}
+            </Text>
+          </Text>
+
+          <Text style={styles.subheading}>
+            {tr(
+              lang,
+              'Manage your menu effortlessly.',
+              'Quản lý thực đơn thật dễ dàng.'
+            )}
+          </Text>
+        </View>
+
+        <Pressable
+          onPress={onLanguage}
+          style={styles.language}
+        >
+          <Text style={styles.languageText}>
+            {lang === 'en' ? '🇻🇳 VI' : '🇬🇧 EN'}
+          </Text>
+        </Pressable>
+      </View>
+
+      {/* Thong ke */}
+      <View style={styles.hero}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.heroSmall}>
+            {tr(
+              lang,
+              'MENU OVERVIEW',
+              'TỔNG QUAN THỰC ĐƠN'
+            )}
+          </Text>
+
+          <Text style={styles.heroBig}>
+            {dishes.length}
+            <Text style={styles.heroUnit}>
+              {' '}
+              {tr(lang, 'dishes', 'món ăn')}
+            </Text>
+          </Text>
+
+          <Text style={styles.heroSmall}>
+            ✦ {categories.length}{' '}
+            {tr(lang, 'categories', 'danh mục')}
+            {'  ·  '}
+            {dishes.filter((d) => d.isAvailable).length}{' '}
+            {tr(lang, 'available', 'đang bán')}
+          </Text>
+        </View>
+
+        <Text style={styles.heroEmoji}>🍜</Text>
+      </View>
+
+      {/* Tieu de tim kiem */}
+      <View style={styles.sectionTitle}>
+        <Text style={styles.sectionText}>
+          {tr(lang, 'Explore dishes', 'Khám phá món ăn')}
+        </Text>
+
+        <Text style={styles.sectionCount}>
+          {shown.length}{' '}
+          {tr(lang, 'results', 'kết quả')}
+        </Text>
+      </View>
+
+      {/* O tim kiem */}
+      <View style={styles.searchWrap}>
+        <Text style={styles.magnify}>⌕</Text>
+
+        <TextInput
+          style={styles.search}
+          placeholder={tr(
+            lang,
+            'Search your favorite dishes...',
+            'Tìm món ăn yêu thích...'
+          )}
+          placeholderTextColor="#9DA9B6"
+          value={search}
+          onChangeText={setSearch}
+        />
+      </View>
+
+      {/* Loc theo danh muc */}
+      <Text style={styles.filterTitle}>
+        {tr(lang, 'Categories', 'Danh mục')}
+      </Text>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.categoryPills}
+      >
+        {pill(
+          tr(lang, 'All dishes', 'Tất cả món'),
+          cat === 'all',
+          () => setCat('all'),
+          'all'
+        )}
+
+        {categories.map((category) =>
+          pill(
+            category.name,
+            String(cat) === String(category.id),
+            () => setCat(String(category.id)),
+            String(category.id)
+          )
+        )}
+      </ScrollView>
+
+      {/* Bo loc */}
+      <View style={styles.filtersBox}>
+        <Text style={styles.filterTitle}>
+          {tr(lang, 'Filters', 'Bộ lọc')}
+        </Text>
+
+        <View style={styles.pills}>
+          {pill(
+            tr(
+              lang,
+              '✓ Available only',
+              '✓ Chỉ đang bán'
+            ),
+            availableOnly,
+            () => setAvailableOnly((v) => !v),
+            'available'
+          )}
+        </View>
+
+        {/* Khoang gia */}
+        <Text style={styles.filterTitle}>
+          {tr(lang, 'Price range', 'Khoảng giá')} (VND)
+        </Text>
+
+        <View style={styles.priceRow}>
+          <TextInput
+            style={styles.priceInput}
+            keyboardType="numeric"
+            value={minPrice}
+            onChangeText={setMinPrice}
+            placeholder={tr(lang, 'Min price', 'Giá từ')}
+          />
+
+          <Text style={styles.dash}>—</Text>
+
+          <TextInput
+            style={styles.priceInput}
+            keyboardType="numeric"
+            value={maxPrice}
+            onChangeText={setMaxPrice}
+            placeholder={tr(lang, 'Max price', 'Giá đến')}
+          />
+        </View>
+
+        {invalidRange && (
+          <Text style={styles.error}>
+            {tr(
+              lang,
+              'Invalid price range',
+              'Khoảng giá không hợp lệ'
+            )}
+          </Text>
+        )}
+
+        {/* Sap xep */}
+        <Text style={styles.filterTitle}>
+          {tr(lang, 'Sort by', 'Sắp xếp')}
+        </Text>
+
+        <View style={styles.pills}>
+          {[
+            ['default', tr(lang, 'Default', 'Mặc định')],
+            ['asc', tr(lang, 'Price ↑', 'Giá ↑')],
+            ['desc', tr(lang, 'Price ↓', 'Giá ↓')],
+            ['time', tr(lang, 'Quickest', 'Nhanh nhất')],
+          ].map(([id, label]) =>
+            pill(
+              label,
+              sort === id,
+              () => setSort(id),
+              id
+            )
+          )}
+        </View>
+      </View>
+
+      {/* Danh sach mon an */}
+      <View style={styles.sectionTitle}>
+        <Text style={styles.sectionText}>
+          {tr(lang, 'The menu', 'Thực đơn')}
+        </Text>
+
+        <Text style={styles.sectionCount}>
+          {shown.length}{' '}
+          {tr(lang, 'items', 'món')}
+        </Text>
+      </View>
+    </>
+  );
+
+  return (
+    <View style={styles.screen}>
+      <FlatList
+        data={shown}
+        keyExtractor={(item, index) =>
+          String(
+            item.apiId ||
+            item.localId ||
+            item.id ||
+            index
+          )
+        }
+        refreshing={loading}
+        onRefresh={onRefresh}
+        contentContainerStyle={styles.list}
+        ListHeaderComponent={<Header />}
+        keyboardShouldPersistTaps="handled"
+        renderItem={({ item }) => {
+          const category = categories.find(
+            (c) =>
+              String(c.id) === String(item.categoryId)
+          );
+
+          return (
+            <DishCard
+              dish={item}
+              categoryName={category?.name || ''}
+              onPress={() => onSelect?.(item)}
+              lang={lang}
+            />
+          );
+        }}
+        ListEmptyComponent={
+          <View style={styles.empty}>
+            <Text style={{ fontSize: 48 }}>🍽️</Text>
+
+            <Text style={styles.emptyTitle}>
+              {tr(
+                lang,
+                'No dishes found',
+                'Chưa tìm thấy món ăn'
+              )}
+            </Text>
+
+            <Text style={styles.emptyHint}>
+              {tr(
+                lang,
+                'Try another filter or add a new dish.',
+                'Thử bộ lọc khác hoặc thêm món mới.'
+              )}
+            </Text>
+          </View>
+        }
+      />
+
+      {/* Nut them mon */}
+      <Pressable
+        style={styles.fab}
+        onPress={onAdd}
+      >
+        <Text style={styles.fabText}>
+          ＋ {tr(lang, 'Add new dish', 'Thêm món mới')}
+        </Text>
+      </Pressable>
     </View>
-    <FlatList data={shown} keyExtractor={x => x.apiId} onRefresh={onRefresh} refreshing={loading}
-      contentContainerStyle={{padding:16,paddingBottom:96,flexGrow:1}}
-      ListHeaderComponent={<>
-        <TextInput style={s.search} value={search} onChangeText={setSearch} placeholder={tr(lang,'Search dishes...','Tìm món ăn...')} />
-        <Text style={s.label}>{tr(lang,'Category','Loại món')}</Text>
-        <View style={s.tags}>{tag(tr(lang,'All','Tất cả'),cat==='all',()=>setCat('all'))}{categories.map(c=>tag(c.name,cat===c.id,()=>setCat(c.id)))}</View>
-        <View style={s.tags}>{tag(tr(lang,'Available only','Chỉ đang bán'),availableOnly,()=>setAvailableOnly(v=>!v))}</View>
-        <Text style={s.label}>{tr(lang,'Price range (VND)','Khoảng giá (VNĐ)')}</Text>
-        <View style={{flexDirection:'row',gap:8}}><TextInput style={[s.search,{flex:1}]} placeholder={tr(lang,'Min price','Giá từ')} keyboardType='numeric' value={minPrice} onChangeText={setMinPrice}/><TextInput style={[s.search,{flex:1}]} placeholder={tr(lang,'Max price','Giá đến')} keyboardType='numeric' value={maxPrice} onChangeText={setMaxPrice}/></View>
-        {!!invalidRange&&<Text style={{color:'#b91c1c'}}>{tr(lang,'Invalid price range','Khoảng giá không hợp lệ')}</Text>}
-        <Text style={s.label}>{tr(lang,'Sort','Sắp xếp')}</Text>
-        <View style={s.tags}>{[['default',tr(lang,'Default','Mặc định')],['asc',tr(lang,'Price ↑','Giá ↑')],['desc',tr(lang,'Price ↓','Giá ↓')],['time',tr(lang,'Quickest','Nhanh nhất')]].map(([id,label])=>tag(label,sort===id,()=>setSort(id)))}</View>
-        <Text style={s.label}>{tr(lang,'Dish list','Danh sách món ăn')}</Text>
-      </>}
-      renderItem={({item})=><DishCard dish={item} categoryName={categories.find(c=>c.id===item.categoryId)?.name} onPress={()=>onSelect(item)} lang={lang}/>}
-      ListEmptyComponent={<Text style={{textAlign:'center',color:'#64748b',marginTop:40}}>{tr(lang,'No matching dishes','Không tìm thấy món ăn')}</Text>}/>
-    <Pressable style={s.fab} onPress={onAdd}><Text style={{color:'white',fontWeight:'800',fontSize:17}}>+ {tr(lang,'Add dish','Thêm món')}</Text></Pressable>
-  </View>;
+  );
 }
-const s = StyleSheet.create({screen:{flex:1,backgroundColor:'#f4f7fa'},header:{padding:18,paddingTop:28,backgroundColor:'white',flexDirection:'row',alignItems:'center',justifyContent:'space-between'},title:{fontSize:26,fontWeight:'900',color:'#16324c'},note:{color:'#64748b',marginTop:5},lang:{backgroundColor:'#eaf2fb',padding:10,borderRadius:12},search:{backgroundColor:'white',borderColor:'#dfe5ed',borderWidth:1,borderRadius:12,padding:12,marginBottom:12},label:{fontSize:15,fontWeight:'800',color:'#243b53',marginVertical:9},tags:{flexDirection:'row',flexWrap:'wrap',gap:7,marginBottom:5},tag:{backgroundColor:'#fff',borderRadius:20,paddingHorizontal:12,paddingVertical:8,borderWidth:1,borderColor:'#dee6ee'},tagOn:{backgroundColor:'#1b73b9',borderColor:'#1b73b9'},tagText:{color:'#45596e',fontSize:12},tagTextOn:{color:'#fff',fontWeight:'700'},fab:{position:'absolute',bottom:20,right:20,backgroundColor:'#1b73b9',paddingHorizontal:22,paddingVertical:14,borderRadius:25,elevation:4}});
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: '#F7F8FB',
+  },
+
+  list: {
+    paddingHorizontal: 18,
+    paddingBottom: 125,
+    maxWidth: 1000,
+    width: '100%',
+    alignSelf: 'center',
+  },
+
+  top: {
+    paddingTop: 26,
+    paddingBottom: 23,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+
+  eyebrow: {
+    fontSize: 11,
+    color: '#E17951',
+    letterSpacing: 1.3,
+    fontWeight: '800',
+  },
+
+  header: {
+    fontWeight: '900',
+    fontSize: 30,
+    color: '#162737',
+    marginTop: 9,
+    letterSpacing: -1.1,
+  },
+
+  accent: {
+    color: '#E17951',
+  },
+
+  subheading: {
+    fontSize: 13,
+    color: '#7C8897',
+    marginTop: 6,
+  },
+
+  language: {
+    padding: 11,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#ECEEF2',
+    marginLeft: 10,
+  },
+
+  languageText: {
+    fontWeight: '800',
+    color: '#15273B',
+  },
+
+  hero: {
+    borderRadius: 24,
+    backgroundColor: '#163348',
+    padding: 25,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 23,
+  },
+
+  heroSmall: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#BFD1DB',
+    letterSpacing: 1.1,
+  },
+
+  heroBig: {
+    fontSize: 42,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    marginVertical: 10,
+  },
+
+  heroUnit: {
+    fontSize: 18,
+    fontWeight: '500',
+    color: '#F7D3B7',
+  },
+
+  heroEmoji: {
+    fontSize: 74,
+  },
+
+  sectionTitle: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 15,
+  },
+
+  sectionText: {
+    color: '#172B3F',
+    fontSize: 21,
+    fontWeight: '900',
+  },
+
+  sectionCount: {
+    color: '#9BA6B3',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
+  searchWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E8EDF1',
+    borderRadius: 17,
+    marginBottom: 19,
+    paddingHorizontal: 16,
+  },
+
+  magnify: {
+    fontSize: 28,
+    color: '#EF8B60',
+  },
+
+  search: {
+    height: 54,
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#172B3F',
+  },
+
+  filterTitle: {
+    fontWeight: '800',
+    color: '#435363',
+    fontSize: 13,
+    marginBottom: 10,
+    marginTop: 6,
+  },
+
+  categoryPills: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingBottom: 8,
+  },
+
+  pills: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+    paddingBottom: 8,
+  },
+
+  pill: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E5E9ED',
+    borderWidth: 1,
+    paddingHorizontal: 15,
+    paddingVertical: 11,
+    borderRadius: 13,
+    marginBottom: 6,
+  },
+
+  pillSelected: {
+    backgroundColor: '#E87951',
+    borderColor: '#E87951',
+  },
+
+  pillText: {
+    color: '#627183',
+    fontWeight: '700',
+    fontSize: 12,
+  },
+
+  pillSelectedText: {
+    color: '#FFFFFF',
+  },
+
+  filtersBox: {
+    marginTop: 14,
+    padding: 17,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#EDF0F4',
+    marginBottom: 21,
+  },
+
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    marginVertical: 10,
+  },
+
+  priceInput: {
+    flex: 1,
+    borderRadius: 12,
+    backgroundColor: '#F8F9FB',
+    borderWidth: 1,
+    borderColor: '#E9ECF1',
+    padding: 12,
+    minWidth: 0,
+    fontSize: 12,
+  },
+
+  dash: {
+    color: '#9EADB8',
+  },
+
+  error: {
+    color: '#C44343',
+    fontSize: 12,
+    marginBottom: 8,
+  },
+
+  empty: {
+    padding: 32,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    alignItems: 'center',
+    gap: 9,
+    marginBottom: 20,
+  },
+
+  emptyTitle: {
+    color: '#213348',
+    fontSize: 18,
+    fontWeight: '800',
+  },
+
+  emptyHint: {
+    fontSize: 12,
+    color: '#8A97A5',
+    textAlign: 'center',
+  },
+
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 24,
+    backgroundColor: '#E87951',
+    borderRadius: 17,
+    paddingVertical: 17,
+    paddingHorizontal: 22,
+    elevation: 5,
+    shadowColor: '#E87951',
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+  },
+
+  fabText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+});

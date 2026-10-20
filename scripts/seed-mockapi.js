@@ -1,7 +1,7 @@
 // Run with Node.js >=18: node scripts/seed-mockapi.js
 // Only POSTs missing sample records; never deletes existing records.
 const MSSV = 'BIT242958';
-const base = 'https://6ad714b5f71f154ac487b792.mockapi.io';
+const base = 'https://6ad714b5f71f154ac487b791.mockapi.io';
 const f = (s) => `${MSSV}_${s}`;
 const res = (s) => `${MSSV}_${s}`;
 
@@ -21,11 +21,11 @@ const categories = [
   { code: 'CAT03', name: 'Drinks', description: 'Beverages' },
 ];
 const dishes = [
-  { code: 'DISH01', name: 'Fried Rice', price: 45000, mins: 15, cat: 'CAT01', available: true },
-  { code: 'DISH02', name: 'Beef Pho', price: 55000, mins: 20, cat: 'CAT01', available: true },
-  { code: 'DISH03', name: 'Spring Rolls', price: 35000, mins: 10, cat: 'CAT02', available: true },
-  { code: 'DISH04', name: 'Chicken Wings', price: 60000, mins: 25, cat: 'CAT02', available: false },
-  { code: 'DISH05', name: 'Lemon Tea', price: 20000, mins: 5, cat: 'CAT03', available: true },
+  { code: 'DISH01', name: 'Fried Rice', price: 45000, mins: 15, cat: 'CAT01', available: true, images: ['https://images.unsplash.com/photo-1603133872878-684f208fb84b?w=900&q=85', 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=900&q=85'] },
+  { code: 'DISH02', name: 'Beef Pho', price: 55000, mins: 20, cat: 'CAT01', available: true, images: ['https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=900&q=85'] },
+  { code: 'DISH03', name: 'Spring Rolls', price: 35000, mins: 10, cat: 'CAT02', available: true, images: ['https://images.unsplash.com/photo-1544025162-d76694265947?w=900&q=85'] },
+  { code: 'DISH04', name: 'Chicken Wings', price: 60000, mins: 25, cat: 'CAT02', available: false, images: ['https://images.unsplash.com/photo-1527477396000-e27163b481c2?w=900&q=85'] },
+  { code: 'DISH05', name: 'Lemon Tea', price: 20000, mins: 5, cat: 'CAT03', available: true, images: ['https://images.unsplash.com/photo-1544145945-f90425340c7e?w=900&q=85'] },
 ];
 
 async function main() {
@@ -55,7 +55,7 @@ async function main() {
         [f('IsAvailable')]: dish.available,
         [f('Description')]: `${dish.name} - sample item`,
         [f('DishCategoryId')]: dish.cat,
-        [f('DishImage')]: [],
+        [f('DishImage')]: (dish.images || []).map((url,index)=>({[f('ImageUrl')]:url,[f('IsThumbnail')]:index===0})),
       });
       console.log('Created dish:', created[f('Name')]);
     }
